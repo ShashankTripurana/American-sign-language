@@ -1,0 +1,72 @@
+import cv2
+from cvzone.HandTrackingModule import HandDetector
+import numpy as np
+import math
+import time
+import os
+
+cap = cv2.VideoCapture(0)
+detector = HandDetector(maxHands=1)
+
+offset = 25
+imageSize = 300
+
+folder ="C:\\Users\\saish\\OneDrive\Desktop\\asl recognisation\\Words/Hello"
+counter = 0
+
+# Ensure the directory exists
+if not os.path.exists(folder):
+    os.makedirs(folder)
+
+while True:
+    success, img = cap.read()
+    hands, img = detector.findHands(img)
+
+    if hands:
+        hands = hands[0]
+        x, y, w, h = hands['bbox']
+
+        imgWhite = np.ones((imageSize, imageSize, 3), np.uint8) * 255
+
+
+        y1, y2 = max(0, y - offset), min(img.shape[0], y + h + offset)
+        x1, x2 = max(0, x - offset), min(img.shape[1], x + w + offset)
+
+        imgCrop = img[y1:y2, x1:x2]
+        imgCropShape = imgCrop.shape
+
+        aspectRatio = h / w
+
+        if aspectRatio > 1:
+            k = imageSize / h
+            wCal = math.ceil(k * w)
+            imgResize = cv2.resize(imgCrop, (wCal, imageSize))
+            imgResizeShape = imgResize.shape
+            wGap = math.ceil((imageSize - wCal) / 2)
+            imgWhite[:, wGap:wCal + wGap] = imgResize
+
+        else:
+            k = imageSize / w
+            hCal = math.ceil(k * h)
+            imgResize = cv2.resize(imgCrop, (imageSize, hCal))
+            imgResizeShape = imgResize.shape
+            hGap = math.ceil((imageSize - hCal) / 2)
+            imgWhite[hGap:hCal + hGap, :] = imgResize  # Corrected line
+
+        cv2.imshow("Image Crop", imgCrop)
+        cv2.imshow("Image White", imgWhite)
+
+    cv2.imshow("Image", img)
+    key = cv2.waitKey(1)
+    if key == 27:
+        counter += 1
+        image_path = f'{folder}/Image_{time.time()}.jpg'
+        cv2.imwrite(image_path, imgWhite)
+        print(f'Saved {image_path}, total: {counter}')
+
+
+    if key == ord("q"):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
